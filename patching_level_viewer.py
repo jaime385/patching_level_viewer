@@ -4,50 +4,33 @@ import re
 with open('test2.htm', 'r') as file:
     raw_SRU = file.read()
 
-#Funcion que toma la lista de parches del sistema y cuenta cuantas veces se repiten dentro del SRU. Devuelve un diccionatio con el parche y su fincionalidad en su key y las veces que se repite como value
-def patch_count(list):
-    count = {}
-    # Iterar sobre cada elemento en la lista
-    for element in list:
-        # Verificar si el elemento ya está en el diccionario
-        if element in count:
-            # Si está, incrementar su contador
-            count[element] += 1
-        else:
-            # Si no está, agregarlo al diccionario con contador 1
-            count[element] = 1
-
-    return count
-
-def drop_type_cleaning(lista, longitud_minima):
-    return [elemento for elemento in lista if len(str(elemento)) <= longitud_minima]
-
-
+#Se llama a la libreria importada para poder parsear el contenido el archivo html    
 SRU_content = BeautifulSoup(raw_SRU, 'html.parser')
-#Se inicializan palabras clave
+#Inicializacion de palabras clave
 WS_keyword = re.compile(r'Workstation: ', re.IGNORECASE)
-patch_keyword = re.compile(r'OVA3', re.IGNORECASE) 
-drop_type_kw_1 = re.compile(r'Operator Station', re.IGNORECASE)
-drop_type_kw_2 = re.compile(r'Non-Ovation Drop', re.IGNORECASE)
 #Las siguientes lineas se encargan de buscar todos los elementos usando en el tag y la clase apropiadas por medio del keyword
-patches = SRU_content.find_all("td", class_="ValueColumn", string=patch_keyword)
-workstations = SRU_content.find_all("caption", class_="SectionTitle", string=WS_keyword)
-#drop_type = SRU_content.find_all("td", class_="ValueColumn", string=drop_type_kw_1 or drop_type_kw_2)
-#drop_type = SRU_content.find_all("td", class_= "ValueColumn", text=lambda text: "Operator Station" in text and "Non-Ovation Drop"  in text )
+workstations_in_SRU = SRU_content.find_all("caption", class_="SectionTitle", string=WS_keyword)
+#Lista que contiene todos los nombres de las workstations
+ws_list = list()
+#Ciclo que guarda todos los nombres de las Workstations en la lista anterior
+for machine in workstations_in_SRU:
+    ws_list.append(machine.text.strip())
 
-#drop = drop_type_cleaning(drop_type, len("<td class=\"ValueColumn\">Operator Station</td>"))
+#Dentro de la siguiente variable/lista se encuentran los tags que contienen toda la info de las WS pero debe limpiarse
+table_ST = (SRU_content.find_all("table", class_= "SectionTable")) 
 
-patch_list = list()
+#dummy_var = table_ST[0].find("caption", class_="SectionTitle").text.strip() #Esta variable la hice para probar si podia obtener
+#La siguiente lista va a contener las porciones de codigo html cuyo header va a ser el nombre de la WS
+ws_info = list()
 
-for line in patches:
-    line_split = line.text.split(";")
-    patch = line_split[0]
-    functionality = line_split[-1].split("Comment:")[-1]
-    patch_list.append((patch,functionality))
-    patch_list = sorted(patch_list, key=lambda x: x[0])
+#El siguiente ciclo se encarga de barrer sobre los headers comparando el header con todos los elementos de la lista de nombres de maquinas y guardando las porciones de codigo html cuyo header coincida con el nombre de alguna maquina
+for i in range(0,len(table_ST)):
+    for ws in ws_list:
+        if ws == table_ST[i].find("caption", class_="SectionTitle").text.strip():
+            ws_info.append(table_ST[i])
+        else:
+            pass
+        
+print(ws_info[1])
 
-conteo = patch_count(patch_list)
-for patch_number, repetition in conteo.items():
-    print(f"Patch: {patch_number}, Repetitions: {repetition}")
-    
-#print(drop_type.text)
+
